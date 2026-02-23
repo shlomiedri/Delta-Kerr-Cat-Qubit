@@ -23,21 +23,15 @@ def make_operators(N=g.N):
     p = 1j * (a_dag - a) / np.sqrt(2)
     return {'a': a, 'a_dag': a_dag, 'n': n, 'x': x, 'p': p} 
 
-
-def make_hamiltonian(ops,K = g.K, P = g.P, delta = g.delta):
+def make_hamiltonian(ops, K=g.K, P=g.P, delta=g.delta):
     """
-   Parameters:
-        ops  (dict): output of make_operators()
-        K    (float): Kerr nonlinearity strength
-        eps2 (float): squeezing drive amplitude
-        delta(float): detuning Δ
-    Returns:
-         the Hamiltonian operator
+    Normalized internally by g.K so matrix elements are order 1.
+    All inputs still in physical units (rad/s) — fully dynamic.
     """
-    kerr = K*(ops['a']**2*ops['a_dag']**2)
-    pump = P*(ops['a']**2 + ops['a_dag']**2)
-    detune = delta*ops['a']*ops['a_dag']
-    return kerr+pump+detune
+    kerr   = -(K/g.K)     * (ops['a_dag']**2 * ops['a']**2)
+    pump   =  (P/g.K)     * (ops['a']**2 + ops['a_dag']**2)
+    detune =  (delta/g.K) * ops['a_dag'] * ops['a']
+    return kerr + pump + detune
 
 def make_cat_states(N= g.N, P = g.P, K = g.K):
     """
@@ -76,10 +70,10 @@ def make_collapse_ops(ops, kappa1=g.kappa_1, nth=g.n_th, kappa_phi=1/g.T_2e):
     Returns:
         list of qutip.Qobj: [c_loss, c_thermal, c_dephase]
     """
-    c_loss = np.sqrt(kappa1+nth)*ops['a']
+    c_loss = np.sqrt(kappa1*(1+nth))*ops['a']
     c_thermal = np.sqrt(nth*kappa1)*ops['a_dag']
-    c_dephase = np.sqrt(kappa_phi)*ops['n']
-    return [c_loss, c_thermal, c_dephase ]
+    #c_dephase = np.sqrt(kappa_phi)*ops['n']
+    return [c_loss, c_thermal] #, c_dephase]
 
 def make_logical_paulis(cats):
     cat_p = cats['cat_plus'] * cats['cat_plus'].dag() 
@@ -93,37 +87,41 @@ def make_logical_paulis(cats):
             "X_L": X_L,
             "Id_L":Id_L} 
 
-
 def plot_T_X_vs_P():
-    P_vals = np.linspace(0.5*g.P, 2*g.P, 20)
+    # Sweep ε₂/K from 1 to 5 — physically meaningful, keeps N manageable
+    P_vals   = np.linspace(1.0*g.K, 5.0*g.K, 20)
     T_X_vals = []
 
     for P in P_vals:
-        ops   = make_operators()
-        H     = make_hamiltonian(ops=ops, P=P, delta=0)
-        c_ops = make_collapse_ops(ops)
+        n_bar = P / g.K                        # dimensionless, now between 1 and 5
+        N     = max(g.N, int(4 * n_bar) + 10)  # N between 30 and ~30 — stays small
 
-        L = qt.liouvillian(H, c_ops)
+        ops = make_operators(N=N)
+        H   = make_hamiltonian(ops=ops, P=P, K=g.K, delta=4*g.K)
 
-        eigvals = L.eigenenergies(sparse=True, sort='low', eigvals=2)
+        # Collapse rate normalized by g.K to match Hamiltonian units
+        c_op = [np.sqrt(g.kappa_1 / g.K) * ops['a']]
 
-        non_zero = eigvals[np.abs(eigvals) > 1e-10]
+        L       = qt.liouvillian(H, c_ops=c_op)
+        eigvals = L.eigenenergies(sparse=True, sort='low', eigvals=6)
+
+        non_zero    = eigvals[np.abs(eigvals) > 1e-10]
         mixing_rate = np.min(np.abs(non_zero.real))
-        T_X_vals.append(1.0 / mixing_rate)
+
+        # Convert back to physical time: eigenvalue is in units of g.K, so T = 1/(rate * g.K)
+        T_X_vals.append(1.0 / (mixing_rate * g.K))
+
+    T_X_vals = np.array(T_X_vals)
 
     plt.figure()
-    plt.plot(P_vals , np.array(T_X_vals) * g.kappa_1)
-    plt.xlabel(r'Squeezing drive strength $P$')
-    plt.ylabel(r'$T_X$ (ms)')
-    plt.title(r'$T_X$ from Liouvillian gap vs squeezing drive strength')
+    plt.semilogy(P_vals / g.K, T_X_vals * g.kappa_1, 'b.-')
+    plt.xlabel(r'$\epsilon_2 / K$')
+    plt.ylabel(r'$T_X \cdot \kappa_1$ (dimensionless)')
+    plt.title(r'$T_X$ vs pump strength at $\Delta/K = 4$')
     plt.tight_layout()
-    plt.show()
     plt.savefig('plots/T_X_vs_P.png', dpi=300)
     return P_vals, T_X_vals
 
 
-
-
 if __name__ == "__main__":
     p_vals = plot_T_X_vs_P()
-    delta_vals = plot_T_X_vs_delta()

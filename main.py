@@ -118,34 +118,9 @@ def plot_T_X_vs_P():
     plt.title(r'$T_X$ from Liouvillian gap vs squeezing drive strength')
     plt.tight_layout()
     plt.show()
+    plt.savefig('plots/T_X_vs_P.png', dpi=300)
     return P_vals, T_X_vals
 
-
-def plot_T_X_vs_delta():
-    delta_vals = np.linspace(0.5*g.delta, 2*g.delta, 20)
-    T_X_vals = []
-
-    for delta in delta_vals:
-        ops   = make_operators()
-        H     = make_hamiltonian(ops=ops, delta=delta)
-        c_ops = make_collapse_ops(ops)
-
-        L = qt.liouvillian(H, c_ops)
-
-        eigvals = L.eigenenergies(sparse=True, sort='low', eigvals=2)
-
-        non_zero = eigvals[np.abs(eigvals) > 1e-10]
-        mixing_rate = np.min(np.abs(non_zero.real))
-        T_X_vals.append(1.0 / mixing_rate)
-
-    plt.figure()
-    plt.plot(delta_vals , np.array(T_X_vals) * 1e3)
-    plt.xlabel(r'Detuning $\Delta$')
-    plt.ylabel(r'$T_X$ (ms)')
-    plt.title(r'$T_X$ from Liouvillian gap vs detuning')
-    plt.tight_layout()
-    plt.show()
-    return delta_vals, T_X_vals
 
 
 

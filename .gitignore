@@ -18,6 +18,6 @@ env/
 .ruff_cache/
 .coverage
 htmlcov/
-
-Code/
-Articles/
+plots/ 
+.claude/ 
+Article/

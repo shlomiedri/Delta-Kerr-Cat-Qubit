@@ -75,8 +75,8 @@ T_2 = 3.4 * US
 T_2e = 13.7 * US
 
 # Table value: T1 = 15.5 us, but expressed via the requested relation T_1 = 1 / kappa_1
-kappa_1 = 1.0 / (15.5 * US)
-T_1 = 1.0 / kappa_1
+kappa_1 = 0.2 * MHZ  
+T_1 = 1/kappa_1
 
 
 # User-requested thermal occupancy

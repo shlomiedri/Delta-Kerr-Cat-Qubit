@@ -21,3 +21,4 @@ htmlcov/
 plots/ 
 .claude/ 
 Article/
+output/
